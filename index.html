@@ -9,7 +9,7 @@
   :root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
   html, body { margin: 0; }
   [hidden] { display: none !important; }
-  /* Layout: one narrow column. Check-in form on top, recap table below inside its own horizontal scroller. */
+  /* Layout: one narrow column. Squad card (remembered), check-in form, then the recap table in its own horizontal scroller. */
   :root {
     --bg: #eef0e8;
     --surface: #fafbf6;
@@ -52,7 +52,7 @@
   .eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
   h1 { font-family: var(--font-display); font-size: 28px; line-height: 1.1; margin: 0; text-wrap: balance; }
   h2 { font-family: var(--font-display); font-size: 16px; margin: 0; letter-spacing: .02em; }
-  form { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 14px; max-width: 520px; width: 100%; }
+  form, .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 14px; max-width: 520px; width: 100%; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; position: relative; }
   label, .lbl { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
@@ -65,10 +65,21 @@
     font: inherit; font-weight: 600; min-height: 48px; border-radius: 6px; padding: 0 16px;
     border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer;
   }
+  button:disabled { opacity: .45; cursor: not-allowed; }
   button.ghost { background: transparent; color: var(--accent); }
   button.small { min-height: 40px; padding: 0 12px; font-size: 14px; }
   button.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
   button.danger.armed { background: var(--danger); color: var(--danger-ink); }
+  .opts { display: grid; gap: 6px; }
+  .opts.c5 { grid-template-columns: repeat(5, 1fr); }
+  .opts.c4 { grid-template-columns: repeat(4, 1fr); }
+  .opt { padding: 0; min-height: 46px; background: var(--bg); color: var(--ink); border: 1px solid var(--line); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .opt.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .sqedit { display: flex; flex-direction: column; gap: 14px; }
+  .sqbtns { display: flex; gap: 8px; }
+  .sqbtns button { flex: 1; }
+  .sqsum { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .sqtext { font-family: var(--font-display); font-weight: 700; font-size: 16px; line-height: 1.3; }
   .tp { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .tcol { display: flex; flex-direction: column; gap: 6px; width: 76px; }
   .tcol input { text-align: center; font-family: var(--font-display); font-size: 28px; font-weight: 700; min-height: 56px; padding: 6px; font-variant-numeric: tabular-nums; }
@@ -108,7 +119,7 @@
   .summary { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .summary b { color: var(--ink); }
   .scroller { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
-  table { border-collapse: collapse; width: 100%; min-width: 680px; font-size: 14px; }
+  table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 14px; }
   th { text-align: left; font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); padding: 10px 12px; border-bottom: 2px solid var(--ink); white-space: nowrap; }
   td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
   tr:last-child td { border-bottom: 0; }
@@ -126,9 +137,37 @@
 
 <main>
   <header>
-    <span class="eyebrow">9th Company · 1st Platoon</span>
-    <h1>3rd Squad Attendance</h1>
+    <span class="eyebrow" id="eb">Select your company, platoon and squad</span>
+    <h1 id="ttl">Squad Attendance</h1>
   </header>
+
+  <section class="card" id="sqcard" aria-label="Company, platoon and squad">
+    <div class="sqsum" id="sqsum" hidden>
+      <div>
+        <span class="lbl">Reporting as</span>
+        <div class="sqtext" id="sqtext"></div>
+      </div>
+      <button type="button" class="ghost small" id="sqchange">Change</button>
+    </div>
+    <div class="sqedit" id="sqedit">
+      <div class="field">
+        <span class="lbl" id="cl">Company</span>
+        <div class="opts c5" id="oc" role="group" aria-labelledby="cl"></div>
+      </div>
+      <div class="field">
+        <span class="lbl" id="pl">Platoon</span>
+        <div class="opts c4" id="op" role="group" aria-labelledby="pl"></div>
+      </div>
+      <div class="field">
+        <span class="lbl" id="sl">Squad</span>
+        <div class="opts c4" id="os" role="group" aria-labelledby="sl"></div>
+      </div>
+      <div class="sqbtns">
+        <button type="button" class="ghost" id="sqcancel" hidden>Cancel</button>
+        <button type="button" id="sqsave" disabled>Save squad</button>
+      </div>
+    </div>
+  </section>
 
   <form id="f" autocomplete="off">
     <div class="field">
@@ -191,6 +230,7 @@
     <div class="bar">
       <h2 id="rh">Attendance recap</h2>
       <div class="tools">
+        <select id="sfilter" aria-label="Filter by squad"></select>
         <select id="filter" aria-label="Filter by date"></select>
         <select id="tfilter" aria-label="Filter by time"></select>
         <button type="button" class="ghost small" id="copy">Copy recap</button>
@@ -206,6 +246,8 @@
 <script>
 (function () {
   var KEY = "sq-attendance-9c-1p-3s";
+  var SQKEY = KEY + "-squad";
+  var ORD = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];
   var $ = function (id) { return document.getElementById(id); };
   var memory = { rows: [], roster: [] };
 
@@ -215,9 +257,11 @@
   }
   function write(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 
+  /* Records saved before squads existed were all for 9th Co / 1st Plt / 3rd Sqd. */
   var rows = read(KEY, memory.rows).map(function (r) {
     return { id: r.id, name: r.name, unit: r.unit || "", date: r.date,
-             time: r.time || "", status: r.status || "Present", remarks: r.remarks || "" };
+             time: r.time || "", status: r.status || "Present", remarks: r.remarks || "",
+             c: r.c || 9, p: r.p || 1, s: r.s || 3 };
   });
   var roster = read(KEY + "-roster", []);
   var armed = null, armTimer = null;
@@ -231,6 +275,67 @@
   }
   function esc(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
   function say(t, warn) { var m = $("msg"); m.textContent = t; m.className = "msg" + (warn ? " warn" : ""); }
+
+  /* Company / platoon / squad: chosen once, remembered on this phone, filled in on every later visit. */
+  function loadSquad() {
+    try {
+      var o = JSON.parse(localStorage.getItem(SQKEY));
+      if (o && o.c >= 1 && o.c <= 9 && o.p >= 1 && o.p <= 4 && o.s >= 1 && o.s <= 4) return { c: +o.c, p: +o.p, s: +o.s };
+    } catch (e) {}
+    return null;
+  }
+  var squad = loadSquad();
+  var sel = squad ? { c: squad.c, p: squad.p, s: squad.s } : { c: 0, p: 0, s: 0 };
+  var editing = !squad;
+
+  function buildOpts(id, n, key) {
+    var h = "";
+    for (var i = 1; i <= n; i++) h += '<button type="button" class="opt" data-k="' + key + '" data-v="' + i + '" aria-pressed="false">' + i + '</button>';
+    $(id).innerHTML = h;
+  }
+  buildOpts("oc", 9, "c");
+  buildOpts("op", 4, "p");
+  buildOpts("os", 4, "s");
+
+  function renderSquad() {
+    Array.prototype.forEach.call(document.querySelectorAll(".opt"), function (b) {
+      var on = sel[b.getAttribute("data-k")] === +b.getAttribute("data-v");
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    $("sqsave").disabled = !(sel.c && sel.p && sel.s);
+    $("sqcancel").hidden = !squad;
+    $("sqedit").hidden = !editing;
+    $("sqsum").hidden = editing;
+    if (squad) {
+      $("sqtext").textContent = ORD[squad.c] + " Company · " + ORD[squad.p] + " Platoon · " + ORD[squad.s] + " Squad";
+      $("eb").textContent = ORD[squad.c] + " Company · " + ORD[squad.p] + " Platoon";
+      $("ttl").textContent = ORD[squad.s] + " Squad Attendance";
+    } else {
+      $("eb").textContent = "Select your company, platoon and squad";
+      $("ttl").textContent = "Squad Attendance";
+    }
+  }
+  $("sqcard").addEventListener("click", function (e) {
+    var b = e.target.closest(".opt");
+    if (!b) return;
+    sel[b.getAttribute("data-k")] = +b.getAttribute("data-v");
+    renderSquad();
+  });
+  $("sqsave").addEventListener("click", function () {
+    if (!(sel.c && sel.p && sel.s)) return;
+    squad = { c: sel.c, p: sel.p, s: sel.s };
+    try { localStorage.setItem(SQKEY, JSON.stringify(squad)); } catch (e) {}
+    editing = false;
+    renderSquad();
+    say("Squad saved on this phone.", false);
+  });
+  $("sqcancel").addEventListener("click", function () {
+    if (squad) sel = { c: squad.c, p: squad.p, s: squad.s };
+    editing = false;
+    renderSquad();
+  });
+  $("sqchange").addEventListener("click", function () { editing = true; renderSquad(); });
 
   /* Known people = saved roster plus every name in the records. */
   function people() {
@@ -351,23 +456,28 @@
   });
   $("now").addEventListener("click", setNow);
 
+  function sqKey(r) { return r.c + "-" + r.p + "-" + r.s; }
+  function sqLabel(r) { return ORD[r.c] + " Co / " + ORD[r.p] + " Plt / " + ORD[r.s] + " Sqd"; }
+
   function visibleRows() {
-    var f = $("filter").value, t = $("tfilter").value || "all";
-    return rows.filter(function (r) { return (f === "all" || r.date === f) && (t === "all" || r.time === t); })
-      .sort(function (a, b) {
-        return (b.date.localeCompare(a.date)) || (b.time.localeCompare(a.time)) || a.name.localeCompare(b.name);
-      });
+    var f = $("filter").value, t = $("tfilter").value || "all", q = $("sfilter").value || "all";
+    return rows.filter(function (r) {
+      return (f === "all" || r.date === f) && (t === "all" || r.time === t) && (q === "all" || sqKey(r) === q);
+    }).sort(function (a, b) {
+      return (b.date.localeCompare(a.date)) || (b.time.localeCompare(a.time)) || a.name.localeCompare(b.name);
+    });
   }
 
   function renderFilter(keep) {
     var dates = {};
     rows.forEach(function (r) { dates[r.date] = 1; });
     var keys = Object.keys(dates).sort().reverse();
-    var sel = $("filter");
-    sel.innerHTML = '<option value="all">All dates</option>' +
+    var sel2 = $("filter");
+    sel2.innerHTML = '<option value="all">All dates</option>' +
       keys.map(function (k) { return '<option value="' + k + '">' + esc(pretty(k)) + '</option>'; }).join("");
-    sel.value = (keep && (keep === "all" || dates[keep])) ? keep : "all";
+    sel2.value = (keep && (keep === "all" || dates[keep])) ? keep : "all";
     renderTimeFilter($("tfilter").value);
+    renderSquadFilter($("sfilter").value);
   }
 
   /* Time options follow the selected date, so only real check times are listed. */
@@ -375,10 +485,20 @@
     var f = $("filter").value, times = {};
     rows.forEach(function (r) { if (r.time && (f === "all" || r.date === f)) times[r.time] = 1; });
     var keys = Object.keys(times).sort();
-    var sel = $("tfilter");
-    sel.innerHTML = '<option value="all">All times</option>' +
+    var sel3 = $("tfilter");
+    sel3.innerHTML = '<option value="all">All times</option>' +
       keys.map(function (k) { return '<option value="' + k + '">' + esc(k) + '</option>'; }).join("");
-    sel.value = (keep && times[keep]) ? keep : "all";
+    sel3.value = (keep && times[keep]) ? keep : "all";
+  }
+
+  function renderSquadFilter(keep) {
+    var map = {};
+    rows.forEach(function (r) { map[sqKey(r)] = sqLabel(r); });
+    var keys = Object.keys(map).sort();
+    var sel4 = $("sfilter");
+    sel4.innerHTML = '<option value="all">All squads</option>' +
+      keys.map(function (k) { return '<option value="' + k + '">' + esc(map[k]) + '</option>'; }).join("");
+    sel4.value = (keep && map[keep]) ? keep : "all";
   }
 
   function render() {
@@ -392,10 +512,11 @@
       return;
     }
     $("table").innerHTML = '<div class="scroller"><table><thead><tr>' +
-      '<th>Name</th><th>Unit</th><th>Date</th><th>Time</th><th>Status</th><th>Remarks</th><th></th></tr></thead><tbody>' +
+      '<th>Name</th><th>Unit</th><th>Co/Plt/Sqd</th><th>Date</th><th>Time</th><th>Status</th><th>Remarks</th><th></th></tr></thead><tbody>' +
       list.map(function (r) {
         var isArmed = armed === r.id;
         return '<tr><td class="nm">' + esc(r.name) + '</td><td>' + (r.unit ? esc(r.unit) : "-") + '</td>' +
+          '<td class="dt">' + r.c + '/' + r.p + '/' + r.s + '</td>' +
           '<td class="dt">' + esc(r.date) + '</td><td class="tm">' + esc(r.time || "-") + '</td>' +
           '<td><span class="pill ' + (r.status === "Present" ? "ok" : "bad") + '">' + esc(r.status) + '</span></td>' +
           '<td class="rm">' + (r.remarks ? esc(r.remarks) : "-") + '</td>' +
@@ -408,9 +529,11 @@
   setNow();
   $("filter").addEventListener("change", function () { renderTimeFilter($("tfilter").value); render(); });
   $("tfilter").addEventListener("change", render);
+  $("sfilter").addEventListener("change", render);
 
   $("f").addEventListener("submit", function (e) {
     e.preventDefault();
+    if (!squad) { say("Choose and save your company, platoon and squad first.", true); return; }
     var name = $("name").value.trim().replace(/\s+/g, " ");
     var unit = $("unit").value.trim().replace(/\s+/g, " ");
     commit();
@@ -422,8 +545,10 @@
       return r.date === date && r.time === time && r.name.toLowerCase() === name.toLowerCase();
     });
     if (dup) { say(name + " is already recorded for " + date + " at " + time + ".", true); return; }
-    rows.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-                name: name, unit: unit, date: date, time: time, status: status, remarks: remarks });
+    var rec = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                name: name, unit: unit, date: date, time: time, status: status, remarks: remarks,
+                c: squad.c, p: squad.p, s: squad.s };
+    rows.push(rec);
     write(KEY, rows);
     var known = roster.some(function (p) { return p.name.toLowerCase() === name.toLowerCase(); });
     if (!known) { roster.push({ name: name, unit: unit }); write(KEY + "-roster", roster); }
@@ -434,9 +559,10 @@
     syncStatus();
     $("suggest").hidden = true;
     say(name + " recorded as " + status.toLowerCase() + ".", false);
-    var f = $("filter").value, tf = $("tfilter").value;
+    var f = $("filter").value, tf = $("tfilter").value, sf = $("sfilter").value;
     renderFilter(f === "all" ? "all" : date);
     renderTimeFilter(tf === "all" || !tf ? "all" : time);
+    renderSquadFilter(sf === "all" || !sf ? "all" : sqKey(rec));
     render();
     $("name").focus();
   });
@@ -459,12 +585,16 @@
   $("copy").addEventListener("click", function () {
     var list = visibleRows();
     if (!list.length) { say("Nothing to copy yet.", true); return; }
-    var out = "9th Company, 1st Platoon, 3rd Squad - Attendance Recap\n";
+    var one = $("sfilter").value && $("sfilter").value !== "all";
+    var out = one
+      ? ORD[list[0].c] + " Company, " + ORD[list[0].p] + " Platoon, " + ORD[list[0].s] + " Squad - Attendance Recap\n"
+      : "Attendance Recap (all squads)\n";
     var last = "";
     list.forEach(function (r) {
       var head = r.date + " " + (r.time || "");
       if (head !== last) { out += "\n" + head + "\n"; last = head; }
-      out += "- " + r.name + " | " + r.unit + " | " + r.status + (r.remarks ? " | " + r.remarks : "") + "\n";
+      out += "- " + r.name + " | " + r.unit + " | " + r.status + (r.remarks ? " | " + r.remarks : "") +
+        (one ? "" : " | Co " + r.c + " Plt " + r.p + " Sqd " + r.s) + "\n";
     });
     var done = function () { say("Recap copied.", false); };
     var fallback = function () {
@@ -477,6 +607,7 @@
     else fallback();
   });
 
+  renderSquad();
   renderFilter("all");
   render();
 })();
