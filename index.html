@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Squad Attendance</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap">
+<style>
+  :root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  html, body { margin: 0; }
+  [hidden] { display: none !important; }
+  /* Layout: one narrow column. Check-in form on top, recap table below inside its own horizontal scroller. */
+  :root {
+    --bg: #eef0e8;
+    --surface: #fafbf6;
+    --ink: #1f2a1c;
+    --muted: #5d6a56;
+    --line: #cfd5c3;
+    --accent: #3f5a2a;
+    --accent-ink: #fafbf6;
+    --danger: #a23a2a;
+    --danger-ink: #fafbf6;
+    --ok-bg: #dfe9d2;
+    --bad-bg: #f1d9d3;
+    --font-display: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151a13; --surface: #1e251b; --ink: #e8ecdf; --muted: #9aa691;
+      --line: #36402f; --accent: #8fb56a; --accent-ink: #151a13;
+      --danger: #e08a78; --danger-ink: #151a13; --ok-bg: #2a3824; --bad-bg: #402620;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151a13; --surface: #1e251b; --ink: #e8ecdf; --muted: #9aa691;
+    --line: #36402f; --accent: #8fb56a; --accent-ink: #151a13;
+    --danger: #e08a78; --danger-ink: #151a13; --ok-bg: #2a3824; --bad-bg: #402620;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: var(--font-body); font-size: 16px; line-height: 1.45;
+    padding-block: 20px 40px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  main { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+  header { display: flex; flex-direction: column; gap: 4px; }
+  .eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  h1 { font-family: var(--font-display); font-size: 28px; line-height: 1.1; margin: 0; text-wrap: balance; }
+  h2 { font-family: var(--font-display); font-size: 16px; margin: 0; letter-spacing: .02em; }
+  form { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 14px; max-width: 520px; width: 100%; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; position: relative; }
+  label, .lbl { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  input[type="text"], input[type="date"], input[type="time"], select {
+    font: inherit; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 12px; min-height: 48px; width: 100%; min-width: 0;
+  }
+  input:focus-visible, button:focus-visible, select:focus-visible, .seg input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: 2px; }
+  button {
+    font: inherit; font-weight: 600; min-height: 48px; border-radius: 6px; padding: 0 16px;
+    border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer;
+  }
+  button.ghost { background: transparent; color: var(--accent); }
+  button.small { min-height: 40px; padding: 0 12px; font-size: 14px; }
+  button.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
+  button.danger.armed { background: var(--danger); color: var(--danger-ink); }
+  .tp { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tcol { display: flex; flex-direction: column; gap: 6px; width: 76px; }
+  .tcol input { text-align: center; font-family: var(--font-display); font-size: 28px; font-weight: 700; min-height: 56px; padding: 6px; font-variant-numeric: tabular-nums; }
+  .step { min-height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; }
+  .colon { font-family: var(--font-display); font-size: 28px; font-weight: 700; }
+  .tside { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; margin-left: 4px; }
+  .hint { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { border-radius: 999px; min-width: 56px; font-variant-numeric: tabular-nums; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label {
+    display: flex; align-items: center; justify-content: center; min-height: 48px; border-radius: 6px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 15px; letter-spacing: 0;
+    text-transform: none; font-weight: 600; cursor: pointer;
+  }
+  .seg input:checked + label.p { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .seg input:checked + label.a { background: var(--danger); border-color: var(--danger); color: var(--danger-ink); }
+  .seg > div { position: relative; }
+  .suggest {
+    position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 5;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+    max-height: 240px; overflow-y: auto; box-shadow: 0 6px 18px rgba(0,0,0,.18);
+  }
+  .suggest button {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 0; width: 100%; text-align: left;
+    background: transparent; color: var(--ink); border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+    padding: 10px 12px; min-height: 48px; font-weight: 600;
+  }
+  .suggest button:last-child { border-bottom: 0; }
+  .suggest small { font-weight: 400; color: var(--muted); font-size: 13px; }
+  .msg { min-height: 20px; font-size: 14px; color: var(--muted); }
+  .msg.warn { color: var(--danger); }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .tools select { min-height: 40px; padding: 6px 10px; width: auto; font-size: 14px; }
+  .summary { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .summary b { color: var(--ink); }
+  .scroller { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 680px; font-size: 14px; }
+  th { text-align: left; font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); padding: 10px 12px; border-bottom: 2px solid var(--ink); white-space: nowrap; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td.nm { font-weight: 600; }
+  td.tm, td.dt { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  td.rm { min-width: 140px; overflow-wrap: anywhere; color: var(--muted); }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .pill.ok { background: var(--ok-bg); color: var(--ink); }
+  .pill.bad { background: var(--bad-bg); color: var(--danger); }
+  .empty { border: 1px dashed var(--line); border-radius: 8px; padding: 20px 16px; color: var(--muted); text-align: center; }
+  .foot { font-size: 12px; color: var(--muted); max-width: 520px; }
+</style>
+</head>
+<body>
+
+<main>
+  <header>
+    <span class="eyebrow">9th Company · 1st Platoon</span>
+    <h1>3rd Squad Attendance</h1>
+  </header>
+
+  <form id="f" autocomplete="off">
+    <div class="field">
+      <label for="name">Name</label>
+      <input id="name" type="text" placeholder="Type to search or add a name" autocapitalize="words" autocomplete="off" required>
+      <div class="suggest" id="suggest" hidden></div>
+    </div>
+    <div class="field">
+      <label for="unit">Unit</label>
+      <input id="unit" type="text" placeholder="Type to search or add a unit (CES, ITMS, CSG)" autocapitalize="characters" autocomplete="off" required>
+      <div class="suggest" id="usuggest" hidden></div>
+    </div>
+    <div class="field">
+      <label for="date">Date</label>
+      <input id="date" type="date" required>
+    </div>
+    <div class="field">
+      <span class="lbl" id="tl">Time (24-hour)</span>
+      <input id="time" type="hidden">
+      <div class="tp" role="group" aria-labelledby="tl">
+        <div class="tcol">
+          <button type="button" class="ghost step" data-t="h" data-d="1" aria-label="Hour up"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <input id="hh" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" aria-label="Hour" autocomplete="off">
+          <button type="button" class="ghost step" data-t="h" data-d="-1" aria-label="Hour down"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <span class="colon" aria-hidden="true">:</span>
+        <div class="tcol">
+          <button type="button" class="ghost step" data-t="m" data-d="5" aria-label="Minutes up by 5"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <input id="mm" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" aria-label="Minutes" autocomplete="off">
+          <button type="button" class="ghost step" data-t="m" data-d="-5" aria-label="Minutes down by 5"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <div class="tside">
+          <button type="button" class="ghost small" id="now" title="Set to current time">Now</button>
+          <span class="hint" id="t12"></span>
+        </div>
+      </div>
+      <div class="chips" role="group" aria-label="Quick minutes">
+        <button type="button" class="ghost small chip" data-min="0">:00</button>
+        <button type="button" class="ghost small chip" data-min="15">:15</button>
+        <button type="button" class="ghost small chip" data-min="30">:30</button>
+        <button type="button" class="ghost small chip" data-min="45">:45</button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="lbl" id="stl">Status</span>
+      <div class="seg" role="radiogroup" aria-labelledby="stl">
+        <div><input type="radio" name="status" id="sp" value="Present" checked><label class="p" for="sp">Present</label></div>
+        <div><input type="radio" name="status" id="sa" value="Absent"><label class="a" for="sa">Absent</label></div>
+      </div>
+    </div>
+    <div class="field" id="rmwrap" hidden>
+      <label for="remarks">Remarks</label>
+      <input id="remarks" type="text" placeholder="Reason (e.g. sick, on leave, on duty)">
+    </div>
+    <button type="submit">Record attendance</button>
+    <div class="msg" id="msg" role="status"></div>
+  </form>
+
+  <section style="display:flex;flex-direction:column;gap:10px" aria-labelledby="rh">
+    <div class="bar">
+      <h2 id="rh">Attendance recap</h2>
+      <div class="tools">
+        <select id="filter" aria-label="Filter by date"></select>
+        <select id="tfilter" aria-label="Filter by time"></select>
+        <button type="button" class="ghost small" id="copy">Copy recap</button>
+      </div>
+    </div>
+    <div class="summary" id="summary"></div>
+    <div id="table"></div>
+  </section>
+
+  <p class="foot">Records are saved in this phone's browser only. Clearing site data or switching browsers removes them. Use Copy recap to keep a backup.</p>
+</main>
+
+<script>
+(function () {
+  var KEY = "sq-attendance-9c-1p-3s";
+  var $ = function (id) { return document.getElementById(id); };
+  var memory = { rows: [], roster: [] };
+
+  function read(k, fb) {
+    try { var r = JSON.parse(localStorage.getItem(k)); return Array.isArray(r) ? r : fb; }
+    catch (e) { return fb; }
+  }
+  function write(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+  var rows = read(KEY, memory.rows).map(function (r) {
+    return { id: r.id, name: r.name, unit: r.unit || "", date: r.date,
+             time: r.time || "", status: r.status || "Present", remarks: r.remarks || "" };
+  });
+  var roster = read(KEY + "-roster", []);
+  var armed = null, armTimer = null;
+
+  function two(n) { return String(n).padStart(2, "0"); }
+  function today() { var d = new Date(); return d.getFullYear() + "-" + two(d.getMonth() + 1) + "-" + two(d.getDate()); }
+  function nowTime() { var d = new Date(); return two(d.getHours()) + ":" + two(d.getMinutes()); }
+  function pretty(iso) {
+    var a = iso.split("-"), d = new Date(+a[0], +a[1] - 1, +a[2]);
+    return d.toLocaleDateString(undefined, { weekday: "short", year: "numeric", month: "short", day: "numeric" });
+  }
+  function esc(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+  function say(t, warn) { var m = $("msg"); m.textContent = t; m.className = "msg" + (warn ? " warn" : ""); }
+
+  /* Known people = saved roster plus every name in the records. */
+  function people() {
+    var map = {};
+    roster.concat(rows).forEach(function (p) {
+      var k = p.name.toLowerCase();
+      if (!map[k]) map[k] = { name: p.name, unit: p.unit };
+    });
+    return Object.keys(map).map(function (k) { return map[k]; })
+      .sort(function (a, b) { return a.name.localeCompare(b.name); });
+  }
+
+  function showSuggest() {
+    var q = $("name").value.trim().toLowerCase(), box = $("suggest");
+    if (!q) { box.hidden = true; return; }
+    var hits = people().filter(function (p) { return p.name.toLowerCase().indexOf(q) !== -1; })
+      .filter(function (p) { return p.name.toLowerCase() !== q; }).slice(0, 6);
+    if (!hits.length) { box.hidden = true; return; }
+    box.innerHTML = hits.map(function (p, i) {
+      return '<button type="button" data-i="' + i + '">' + esc(p.name) + '<small>' + esc(p.unit) + '</small></button>';
+    }).join("");
+    box._hits = hits;
+    box.hidden = false;
+  }
+
+  $("name").addEventListener("input", showSuggest);
+  $("name").addEventListener("focus", showSuggest);
+  $("suggest").addEventListener("mousedown", function (e) { e.preventDefault(); });
+  $("suggest").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-i]");
+    if (!b) return;
+    var p = $("suggest")._hits[+b.getAttribute("data-i")];
+    $("name").value = p.name;
+    $("unit").value = p.unit;
+    $("suggest").hidden = true;
+  });
+  /* Unit works like Name: type to search units already used, tap one to fill it in. */
+  function units() {
+    var map = {};
+    roster.concat(rows).forEach(function (p) {
+      var u = (p.unit || "").trim();
+      if (u && !map[u.toLowerCase()]) map[u.toLowerCase()] = u;
+    });
+    return Object.keys(map).map(function (k) { return map[k]; })
+      .sort(function (a, b) { return a.localeCompare(b); });
+  }
+  function showUSuggest() {
+    var q = $("unit").value.trim().toLowerCase(), box = $("usuggest");
+    var hits = units().filter(function (u) {
+      var l = u.toLowerCase();
+      return l !== q && (!q || l.indexOf(q) !== -1);
+    }).slice(0, 8);
+    if (!hits.length) { box.hidden = true; return; }
+    box.innerHTML = hits.map(function (u, i) {
+      return '<button type="button" data-i="' + i + '">' + esc(u) + '</button>';
+    }).join("");
+    box._hits = hits;
+    box.hidden = false;
+  }
+  $("unit").addEventListener("input", showUSuggest);
+  $("unit").addEventListener("focus", function () { $("suggest").hidden = true; showUSuggest(); });
+  $("name").addEventListener("focus", function () { $("usuggest").hidden = true; });
+  $("usuggest").addEventListener("mousedown", function (e) { e.preventDefault(); });
+  $("usuggest").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-i]");
+    if (!b) return;
+    $("unit").value = $("usuggest")._hits[+b.getAttribute("data-i")];
+    $("usuggest").hidden = true;
+  });
+  document.addEventListener("click", function (e) {
+    if (!e.target.closest("#suggest, #name")) $("suggest").hidden = true;
+    if (!e.target.closest("#usuggest, #unit")) $("usuggest").hidden = true;
+  });
+
+  function syncStatus() {
+    var absent = $("sa").checked;
+    $("rmwrap").hidden = !absent;
+    if (!absent) $("remarks").value = "";
+  }
+  $("sp").addEventListener("change", syncStatus);
+  $("sa").addEventListener("change", syncStatus);
+  /* Time picker: 24-hour HH and MM boxes you can type into, steppers, and quick minute chips. */
+  function readTime() {
+    var h = parseInt($("hh").value, 10), m = parseInt($("mm").value, 10);
+    return { h: isNaN(h) ? 0 : Math.min(23, Math.max(0, h)), m: isNaN(m) ? 0 : Math.min(59, Math.max(0, m)) };
+  }
+  function setTime(h, m) {
+    $("hh").value = two(h); $("mm").value = two(m);
+    $("time").value = two(h) + ":" + two(m);
+    $("t12").textContent = (h % 12 === 0 ? 12 : h % 12) + ":" + two(m) + " " + (h < 12 ? "AM" : "PM");
+  }
+  function commit() { var t = readTime(); setTime(t.h, t.m); }
+  function setNow() { var d = new Date(); setTime(d.getHours(), d.getMinutes()); }
+  ["hh", "mm"].forEach(function (id) {
+    var el = $(id);
+    el.addEventListener("focus", function () { el.select(); });
+    el.addEventListener("input", function () {
+      el.value = el.value.replace(/\D/g, "").slice(0, 2);
+      if (el.value.length === 2) {
+        var max = id === "hh" ? 23 : 59;
+        if (+el.value > max) el.value = String(max);
+        commit();
+        if (id === "hh") $("mm").focus(); else el.blur();
+      }
+    });
+    el.addEventListener("blur", commit);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-t]"), function (b) {
+    b.addEventListener("click", function () {
+      var t = readTime(), d = +b.getAttribute("data-d");
+      if (b.getAttribute("data-t") === "h") t.h = (t.h + d + 24) % 24;
+      else t.m = (t.m + d + 60) % 60;
+      setTime(t.h, t.m);
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-min]"), function (b) {
+    b.addEventListener("click", function () { setTime(readTime().h, +b.getAttribute("data-min")); });
+  });
+  $("now").addEventListener("click", setNow);
+
+  function visibleRows() {
+    var f = $("filter").value, t = $("tfilter").value || "all";
+    return rows.filter(function (r) { return (f === "all" || r.date === f) && (t === "all" || r.time === t); })
+      .sort(function (a, b) {
+        return (b.date.localeCompare(a.date)) || (b.time.localeCompare(a.time)) || a.name.localeCompare(b.name);
+      });
+  }
+
+  function renderFilter(keep) {
+    var dates = {};
+    rows.forEach(function (r) { dates[r.date] = 1; });
+    var keys = Object.keys(dates).sort().reverse();
+    var sel = $("filter");
+    sel.innerHTML = '<option value="all">All dates</option>' +
+      keys.map(function (k) { return '<option value="' + k + '">' + esc(pretty(k)) + '</option>'; }).join("");
+    sel.value = (keep && (keep === "all" || dates[keep])) ? keep : "all";
+    renderTimeFilter($("tfilter").value);
+  }
+
+  /* Time options follow the selected date, so only real check times are listed. */
+  function renderTimeFilter(keep) {
+    var f = $("filter").value, times = {};
+    rows.forEach(function (r) { if (r.time && (f === "all" || r.date === f)) times[r.time] = 1; });
+    var keys = Object.keys(times).sort();
+    var sel = $("tfilter");
+    sel.innerHTML = '<option value="all">All times</option>' +
+      keys.map(function (k) { return '<option value="' + k + '">' + esc(k) + '</option>'; }).join("");
+    sel.value = (keep && times[keep]) ? keep : "all";
+  }
+
+  function render() {
+    var list = visibleRows();
+    var pres = list.filter(function (r) { return r.status === "Present"; }).length;
+    $("summary").innerHTML = list.length
+      ? '<b>' + list.length + '</b> records · <b>' + pres + '</b> present · <b>' + (list.length - pres) + '</b> absent'
+      : '';
+    if (!list.length) {
+      $("table").innerHTML = '<div class="empty">No attendance recorded yet. Fill in the form above and tap Record attendance.</div>';
+      return;
+    }
+    $("table").innerHTML = '<div class="scroller"><table><thead><tr>' +
+      '<th>Name</th><th>Unit</th><th>Date</th><th>Time</th><th>Status</th><th>Remarks</th><th></th></tr></thead><tbody>' +
+      list.map(function (r) {
+        var isArmed = armed === r.id;
+        return '<tr><td class="nm">' + esc(r.name) + '</td><td>' + (r.unit ? esc(r.unit) : "-") + '</td>' +
+          '<td class="dt">' + esc(r.date) + '</td><td class="tm">' + esc(r.time || "-") + '</td>' +
+          '<td><span class="pill ' + (r.status === "Present" ? "ok" : "bad") + '">' + esc(r.status) + '</span></td>' +
+          '<td class="rm">' + (r.remarks ? esc(r.remarks) : "-") + '</td>' +
+          '<td><button type="button" class="danger small' + (isArmed ? " armed" : "") + '" data-id="' + r.id + '">' +
+          (isArmed ? "Confirm" : "Remove") + '</button></td></tr>';
+      }).join("") + '</tbody></table></div>';
+  }
+
+  $("date").value = today();
+  setNow();
+  $("filter").addEventListener("change", function () { renderTimeFilter($("tfilter").value); render(); });
+  $("tfilter").addEventListener("change", render);
+
+  $("f").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var name = $("name").value.trim().replace(/\s+/g, " ");
+    var unit = $("unit").value.trim().replace(/\s+/g, " ");
+    commit();
+    var date = $("date").value, time = $("time").value;
+    var status = $("sa").checked ? "Absent" : "Present";
+    var remarks = status === "Absent" ? $("remarks").value.trim() : "";
+    if (!name || !unit || !date || !time) { say("Enter a name, unit, date and time.", true); return; }
+    var dup = rows.some(function (r) {
+      return r.date === date && r.time === time && r.name.toLowerCase() === name.toLowerCase();
+    });
+    if (dup) { say(name + " is already recorded for " + date + " at " + time + ".", true); return; }
+    rows.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                name: name, unit: unit, date: date, time: time, status: status, remarks: remarks });
+    write(KEY, rows);
+    var known = roster.some(function (p) { return p.name.toLowerCase() === name.toLowerCase(); });
+    if (!known) { roster.push({ name: name, unit: unit }); write(KEY + "-roster", roster); }
+    $("name").value = "";
+    $("unit").value = "";
+    $("usuggest").hidden = true;
+    $("sp").checked = true;
+    syncStatus();
+    $("suggest").hidden = true;
+    say(name + " recorded as " + status.toLowerCase() + ".", false);
+    var f = $("filter").value, tf = $("tfilter").value;
+    renderFilter(f === "all" ? "all" : date);
+    renderTimeFilter(tf === "all" || !tf ? "all" : time);
+    render();
+    $("name").focus();
+  });
+
+  $("table").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-id]");
+    if (!b) return;
+    var id = b.getAttribute("data-id");
+    if (armed === id) {
+      rows = rows.filter(function (r) { return r.id !== id; });
+      write(KEY, rows); armed = null; clearTimeout(armTimer);
+      renderFilter($("filter").value); render();
+    } else {
+      armed = id; clearTimeout(armTimer);
+      armTimer = setTimeout(function () { armed = null; render(); }, 3000);
+      render();
+    }
+  });
+
+  $("copy").addEventListener("click", function () {
+    var list = visibleRows();
+    if (!list.length) { say("Nothing to copy yet.", true); return; }
+    var out = "9th Company, 1st Platoon, 3rd Squad - Attendance Recap\n";
+    var last = "";
+    list.forEach(function (r) {
+      var head = r.date + " " + (r.time || "");
+      if (head !== last) { out += "\n" + head + "\n"; last = head; }
+      out += "- " + r.name + " | " + r.unit + " | " + r.status + (r.remarks ? " | " + r.remarks : "") + "\n";
+    });
+    var done = function () { say("Recap copied.", false); };
+    var fallback = function () {
+      var t = document.createElement("textarea");
+      t.value = out; document.body.appendChild(t); t.select();
+      try { document.execCommand("copy"); done(); } catch (er) { say("Copy failed. Select the table and copy manually.", true); }
+      document.body.removeChild(t);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(out).then(done, fallback);
+    else fallback();
+  });
+
+  renderFilter("all");
+  render();
+})();
+</script>
+
+</body>
+</html>
