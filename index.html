@@ -361,7 +361,20 @@
     box.hidden = false;
   }
 
-  $("name").addEventListener("input", showSuggest);
+  /* Fill the unit automatically when the typed name matches a known person. */
+  var autoUnit = null;
+  function autoFillUnit() {
+    var q = $("name").value.trim().replace(/\s+/g, " ").toLowerCase();
+    var hit = q ? people().filter(function (p) { return p.name.toLowerCase() === q; })[0] : null;
+    var cur = $("unit").value;
+    if (hit && hit.unit && (cur === "" || cur === autoUnit)) {
+      $("unit").value = hit.unit; autoUnit = hit.unit;
+    } else if (!hit && autoUnit !== null && cur === autoUnit) {
+      $("unit").value = ""; autoUnit = null;
+    }
+  }
+  $("name").addEventListener("input", function () { showSuggest(); autoFillUnit(); });
+  $("name").addEventListener("blur", autoFillUnit);
   $("name").addEventListener("focus", showSuggest);
   $("suggest").addEventListener("mousedown", function (e) { e.preventDefault(); });
   $("suggest").addEventListener("click", function (e) {
@@ -370,6 +383,7 @@
     var p = $("suggest")._hits[+b.getAttribute("data-i")];
     $("name").value = p.name;
     $("unit").value = p.unit;
+    autoUnit = p.unit;
     $("suggest").hidden = true;
   });
   /* Unit works like Name: type to search units already used, tap one to fill it in. */
@@ -554,6 +568,7 @@
     if (!known) { roster.push({ name: name, unit: unit }); write(KEY + "-roster", roster); }
     $("name").value = "";
     $("unit").value = "";
+    autoUnit = null;
     $("usuggest").hidden = true;
     $("sp").checked = true;
     syncStatus();
