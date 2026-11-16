@@ -267,7 +267,7 @@
     <div class="row2">
     <div class="field">
       <label for="name">Name</label>
-      <input id="name" type="text" placeholder="Type to search or add a name" autocapitalize="words" autocomplete="off" required>
+      <input id="name" type="text" placeholder="Type to search or add a name" autocapitalize="characters" autocomplete="off" required>
       <div class="suggest" id="suggest" hidden></div>
     </div>
     <div class="field">
@@ -388,7 +388,7 @@
   /* ---------- Data: records, squad roster, headcounts ---------- */
   /* Records saved before squads existed were all for 9th Co / 1st Plt / 3rd Sqd. */
   var rows = read(KEY, []).map(function (r, i) {
-    return { id: r.id || uid(), name: r.name, unit: r.unit || "", date: r.date,
+    return { id: r.id || uid(), name: String(r.name || "").toUpperCase(), unit: String(r.unit || "").toUpperCase(), date: r.date,
              time: r.time || "00:00", status: r.status || "Present", remarks: r.remarks || "",
              c: r.c || 9, p: r.p || 1, s: r.s || 3, at: r.at || i };
   }).filter(function (r) { return r.name && r.date; });
@@ -404,7 +404,7 @@
   var roster = [];
   read(KEY + "-roster", []).forEach(function (r) {
     if (!r || !r.name) return;
-    var m = { id: r.id || uid(), name: r.name, unit: r.unit || "", c: r.c || 9, p: r.p || 1, s: r.s || 3, active: r.active !== false };
+    var m = { id: r.id || uid(), name: String(r.name).toUpperCase(), unit: String(r.unit || "").toUpperCase(), c: r.c || 9, p: r.p || 1, s: r.s || 3, active: r.active !== false };
     if (!findIn(roster, m.name, sqOf(m))) roster.push(m);
   });
   rows.forEach(function (r) {
@@ -527,6 +527,13 @@
       $("unit").value = ""; autoUnit = null;
     }
   }
+  ["name", "unit"].forEach(function (id) {
+    var el = $(id);
+    el.addEventListener("input", function () {
+      var a = el.selectionStart, b = el.selectionEnd, v = el.value.toUpperCase();
+      if (v !== el.value) { el.value = v; try { el.setSelectionRange(a, b); } catch (e) {} }
+    });
+  });
   $("name").addEventListener("input", function () { showSuggest(); autoFillUnit(); });
   $("name").addEventListener("blur", autoFillUnit);
   $("name").addEventListener("focus", showSuggest);
@@ -840,8 +847,8 @@
   $("f").addEventListener("submit", function (e) {
     e.preventDefault();
     if (!squad || !squad.n) { say("Choose your company, platoon and squad, enter the number of members, then tap Save squad.", true); return; }
-    var name = $("name").value.trim().replace(/\s+/g, " ");
-    var unit = $("unit").value.trim().replace(/\s+/g, " ");
+    var name = $("name").value.trim().replace(/\s+/g, " ").toUpperCase();
+    var unit = $("unit").value.trim().replace(/\s+/g, " ").toUpperCase();
     commit();
     var date = $("date").value, time = $("time").value;
     var status = $("sa").checked ? "Absent" : "Present";
